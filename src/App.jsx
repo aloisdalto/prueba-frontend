@@ -5,6 +5,7 @@ const App = () => {
   const [currentParentId, setCurrentParentId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [newNodeTitle, setNewNodeTitle] = useState('');
 
   useEffect(() => {
     const fetchNodes = async () => {
@@ -35,6 +36,39 @@ const App = () => {
     setCurrentParentId(null); // Volver a los nodos raíz
   };
 
+  //Función para crear un nuevo nodo
+  const createNode = async (e) => {
+    e.preventDefault(); // Evita el comportamiento por defecto del formulario
+    if (!newNodeTitle) return; // Asegúrate de que el título no esté vacío
+
+    try {
+      const response = await fetch('https://api-graph.tests.grupoapok.com/api/node', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          parent: currentParentId,
+          title: newNodeTitle,
+          created_at: null,
+          updated_at: null 
+        }),
+      });
+
+      const text = await response.text(); // Obtén la respuesta como texto
+      if (!response.ok) {
+        throw new Error(`Error al crear el nodo: ${text}`); // Muestra el texto de error
+      }
+
+      const createdNode = JSON.parse(text); // Intenta analizar el texto como JSON
+      setNodes(prevNodes => [...prevNodes, createdNode]); // Agrega el nuevo nodo a la lista
+      setNewNodeTitle(''); // Limpia el campo de entrada
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+
   if (loading) {
     return <div>Cargando...</div>;
   }
@@ -54,6 +88,17 @@ const App = () => {
         ))}
       </ul>
       {currentParentId && <button onClick={handleBackToRoot}>Mostrar Nodos Raíz</button>}
+
+      <form onSubmit={createNode}>
+        <input
+          type="text"
+          value={newNodeTitle}
+          onChange={(e) => setNewNodeTitle(e.target.value)}
+          placeholder="Título del nuevo nodo"
+          required
+        />
+        <button type="submit">Crear Nodo</button>
+      </form>
     </div>
   );
 };
