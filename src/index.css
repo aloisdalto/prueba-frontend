@@ -5,8 +5,8 @@
 }
 
 .container{
-    min-width: 200px;
-    max-width: 400px;
+    min-width: 300px;
+    max-width: 500px;
     display: flex;
     flex-direction: column;
     margin: 30px auto;
@@ -31,6 +31,18 @@
     align-items: center;
     cursor: pointer;
     transition: all 300ms ease-in-out;
+}
+
+.actions{
+    display: flex;
+    gap: 10px;
+}
+
+.select{
+    border: solid 2px rgb(82, 5, 205);
+    border-radius: 5px;
+    padding: 0 5px;
+    color: rgb(82, 5, 205);
 }
 
 .delete{

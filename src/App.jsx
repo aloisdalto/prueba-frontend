@@ -8,8 +8,21 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newNodeTitle, setNewNodeTitle] = useState('');
-  /*const [childrenStatus, setChildrenStatus] = useState({});*/
+  const [locales, setLocales] = useState([]);
 
+  useEffect(() => {
+    const fetchLocales = async () => {
+      try {
+        const response = await fetch('https://api-graph.tests.grupoapok.com/api/locales');
+        const data = await response.json();
+        setLocales(data);
+      } catch (err) {
+        console.error('Error al obtener los idiomas:', err);
+      }
+    };
+
+    fetchLocales();
+  }, []);
 
   useEffect(() => {
     const fetchNodes = async () => {
@@ -32,30 +45,6 @@ const App = () => {
 
     fetchNodes();
   }, [currentParentId]);
-
-  /*useEffect(() => {
-    const checkChildren = async () => {
-      const status = {};
-      for (const node of nodes) {
-        try {
-          const response = await fetch(`https://api-graph.tests.grupoapok.com/api/nodes?parent=${node.id}`);
-          if (!response.ok) {
-            throw new Error('Error al verificar los nodos hijos');
-          }
-          const data = await response.json();
-          status[node.id] = data.length > 0; // true si tiene hijos, false si no
-        } catch (err) {
-          console.error(err);
-          status[node.id] = false; // En caso de error, asumimos que no hay hijos
-        }
-      }
-      setChildrenStatus(status);
-    };
-
-    if (nodes.length > 0) {
-      checkChildren();
-    }
-  }, [nodes]);*/
 
   const handleNodeClick = (nodeId) => {
     setCurrentParentId(nodeId); 
@@ -96,7 +85,19 @@ const App = () => {
     }
   };
 
+  const checkIfNodeHasChildren = async (nodeId) => {
+    const response = await fetch(`https://api-graph.tests.grupoapok.com/api/nodes?parent=${nodeId}`);
+    const children = await response.json();
+    return children.length > 0; 
+  };
+
   const deleteNode = async (nodeId) => {
+    const hasChildren = await checkIfNodeHasChildren(nodeId);
+    if (hasChildren) {
+      alert('No puedes eliminar este nodo porque tiene hijos.');
+      return;
+    }
+
     try {
       const response = await fetch(`https://api-graph.tests.grupoapok.com/api/node/${nodeId}`, {
         method: 'DELETE',
@@ -108,11 +109,36 @@ const App = () => {
       }
 
       setNodes(prevNodes => prevNodes.filter(node => node.id !== nodeId));
+      alert('El nodo se ha eliminado con éxito.');
     } catch (err) {
       setError(err.message);
     }
   };
 
+  const fetchNodeTitleInLocale = async (nodeId, locale) => {
+    const response = await fetch(`https://api-graph.tests.grupoapok.com/api/node/${nodeId}?locale=${locale}`);
+    const data = await response.json();
+    
+    if (data.translation && data.translation.length > 0) {
+      const translation = data.translation.find(t => t.locale === locale);
+      
+      if (translation) {
+        return translation.title;
+      }
+    }
+    
+    return data.title;
+  };
+  
+
+  const handleLocaleChange = async (nodeId, locale) => {
+    const titleInLocale = await fetchNodeTitleInLocale(nodeId, locale);
+    setNodes(prevNodes => 
+      prevNodes.map(node => 
+        node.id === nodeId ? { ...node, title: titleInLocale } : node
+      )
+    );
+  };
 
   if (loading) {
     return <div>Cargando...</div>;
@@ -134,9 +160,17 @@ const App = () => {
         <h1 className='title'>Nodos</h1>
         <ul className='list'>
           {nodes.map(node => (
-            <li className='node' key={node.id} onClick={() => handleNodeClick(node.id)}>
-              {node.title}
+            <li className='node' >
+              <span key={node.id} onClick={() => handleNodeClick(node.id)}>{node.title}</span>
+              <div className="actions">
+                <select className='select' onChange={(e) => handleLocaleChange(node.id, e.target.value)} defaultValue="en_US">
+                  {locales.map(locale => (
+                    <option key={locale.locale} value={locale.locale}>{locale.label}</option>
+                  ))}
+                </select>
                 <button className='btn delete' onClick={() => deleteNode(node.id)}>Eliminar</button>
+              </div>
+              
             </li>
           ))}
         </ul>
